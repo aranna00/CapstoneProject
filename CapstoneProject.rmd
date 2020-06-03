@@ -1,0 +1,133 @@
+---
+title: "CapStoneProject"
+author: "Àran Kieskamp"
+date: "19 May 2020"
+output: html_document
+---
+
+# Capstone project
+
+#2 Exploratory Data Analysis
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(pander)
+library(lubridate)
+library(gridExtra)
+library(BiocManager)
+library(affy)
+library(DESeq2)
+library(pheatmap)
+```
+
+
+```{r Loading data}
+data <- read.table("GSE132824_Abiotic_RNA-Seq.Readcount.txt", header = T)
+data <- as_tibble(data)
+
+head(data, n = 5L)
+dim(data)
+str(data)
+
+#splitting data on different methods/*-
+
+cold <- 1:15
+heat <- 16:30
+osmosis <- 31:45
+control <- 46:63
+saline <- 64:78
+
+```
+
+```{r}
+summary(data)
+```
+
+3.4.1
+
+when looking at the summary output of the data, it shows that all minimums and 1st quartiles are 0. and the 3rd quartiles and the max are really far apart.
+
+
+to visualize this in a boxplot a log2 operation will be performed and the outliers will be removed. to be able to successfully use the log2, a pseudo count of 1 will be added
+```{r}
+boxplot(log2(data + 1), outline = F)
+```
+```{r}
+plotDensity(log2(data + 0.1))
+```
+```{r}
+barplot(colSums(data) / 1e6)
+```
+```{r}
+
+(ddsMat <- DESeqDataSetFromMatrix(countData = data, colData = data.frame(samples = names(data)), design = ~1))
+```
+```{r}
+rld.dds <- vst(ddsMat)
+rld <- assay(rld.dds)
+```
+
+```{r}
+dists <- dist(t(rld))
+```
+
+```{r}
+distsMatrix <- as.matrix(dists)
+
+annotation <- data.frame("name" =
+                                 c(
+                                         rep("cold", times = length(cold)),
+                                         rep("heat", times = length(heat)),
+                                         rep("osmosis", times = length(osmosis)),
+                                         rep("control", times = length(control)),
+                                         rep("saline", times = length(saline))
+                                 )
+)
+
+# Set the rownames of the annotation dataframe to the sample names (required)
+rownames(annotation) <- names(data)
+
+pheatmap(distsMatrix,
+         annotation_col = annotation,
+         show_colnames = F,
+         clustering_distance_rows = dists,
+         clustering_distance_cols = dists
+)
+```
+
+```{r}
+library(PoiClaClu)
+dds <- assay(ddsMat)
+poisd <- PoissonDistance(t(dds))
+PoisDistMatrix <- as.matrix(poisd$dd)
+
+mdsPoisData <- data.frame(cmdscale(PoisDistMatrix))
+names(mdsPoisData) <- c('x_coord', 'y_coord')
+
+groups <- factor(c(
+        rep("cold", times = length(cold)),
+        rep("heat", times = length(heat)),
+        rep("osmosis", times = length(osmosis)),
+        rep("control", times = length(control)),
+        rep("saline", times = length(saline))
+))
+
+coldata <- names(data)
+
+ggplot(mdsPoisData, aes(x_coord, y_coord, color = groups, label = coldata)) +
+        geom_text(size = 4) +
+        ggtitle('Multi Dimensional Scaling') +
+        labs(x = "Poisson Distance", y = "Poisson Distance") +
+        theme_bw()
+```
+
+# chapter 4
+
+```{r}
+counts.fpm <- log2(fpm(ddsMat, robust = TRUE) + 1)
+
+```
