@@ -19,9 +19,9 @@ library(pander)
 library(lubridate)
 library(gridExtra)
 library(BiocManager)
+library(pheatmap)
 library(affy)
 library(DESeq2)
-library(pheatmap)
 ```
 
 
@@ -129,5 +129,7 @@ ggplot(mdsPoisData, aes(x_coord, y_coord, color = groups, label = coldata)) +
 
 ```{r}
 counts.fpm <- log2(fpm(ddsMat, robust = TRUE) + 1)
+
+
 
 ```
